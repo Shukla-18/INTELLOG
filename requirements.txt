@@ -1,0 +1,23 @@
+# Intellog - Cybersecurity Monitoring System
+# Backend
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.2
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Agent
+psutil==5.9.6
+requests==2.31.0
+
+# AI Model
+scikit-learn==1.3.2
+numpy==1.26.2
+
+# Reports
+jinja2==3.1.2
+
+# Data export
+pandas==2.1.4
