@@ -124,23 +124,26 @@ class IntellogAgent:
             logger.error(f"Error {endpoint}: {e}")
             return False
 
-    def run_once(self):
-        logger.info(f"--- Collecting: {self.vm_name} ---")
-        m = self.collect_metrics()
-        logger.info(f"CPU:{m['cpu_percent']}% MEM:{m['memory_percent']}%")
-        self.send("/metrics", m)
-        n = self.collect_network()
-        logger.info(f"NetOut:{n['bytes_sent_rate']:.0f}B/s NetIn:{n['bytes_recv_rate']:.0f}B/s")
-        self.send("/network", n)
-        l = self.collect_logs()
-        logger.info(f"Logs:{len(l['logs'])} lines")
-        self.send("/logs", l)
+    def run_once(self, mode="all"):
+        logger.info(f"--- Collecting [{mode}]: {self.vm_name} ---")
+        if mode in ("all", "metrics"):
+            m = self.collect_metrics()
+            logger.info(f"CPU:{m['cpu_percent']}% MEM:{m['memory_percent']}%")
+            self.send("/metrics", m)
+        if mode in ("all", "network"):
+            n = self.collect_network()
+            logger.info(f"NetOut:{n['bytes_sent_rate']:.0f}B/s NetIn:{n['bytes_recv_rate']:.0f}B/s")
+            self.send("/network", n)
+        if mode in ("all", "logs"):
+            l = self.collect_logs()
+            logger.info(f"Logs:{len(l['logs'])} lines")
+            self.send("/logs", l)
 
-    def run(self):
-        logger.info(f"Agent started: {self.vm_name} -> {self.server_url}")
+    def run(self, mode="all"):
+        logger.info(f"Agent started [{mode}]: {self.vm_name} -> {self.server_url}")
         while True:
             try:
-                self.run_once()
+                self.run_once(mode)
             except KeyboardInterrupt:
                 logger.info("Stopped")
                 break
@@ -151,19 +154,31 @@ class IntellogAgent:
             time.sleep(sleep)
 
 
+# Default VM names per mode
+MODE_NAMES = {
+    "all": f"vm-{platform.node()}",
+    "metrics": "system-performance",
+    "network": "network-monitor",
+    "logs": "log-collector",
+}
+
+
 def main():
     p = argparse.ArgumentParser(description="Intellog Agent")
-    p.add_argument("--server", default="http://localhost:8000")
-    p.add_argument("--vm-name", default=f"vm-{platform.node()}")
+    p.add_argument("--server", default="https://intellog.dev")
+    p.add_argument("--vm-name", default=None, help="Label for this agent in dashboard")
+    p.add_argument("--mode", choices=["all", "metrics", "network", "logs"], default="all",
+                   help="What to collect: all, metrics, network, or logs")
     p.add_argument("--interval", type=int, default=60)
     p.add_argument("--token", default="")
     p.add_argument("--once", action="store_true")
     args = p.parse_args()
-    agent = IntellogAgent(args.server, args.vm_name, args.interval, args.token)
+    vm_name = args.vm_name or MODE_NAMES.get(args.mode, f"vm-{platform.node()}")
+    agent = IntellogAgent(args.server, vm_name, args.interval, args.token)
     if args.once:
-        agent.run_once()
+        agent.run_once(args.mode)
     else:
-        agent.run()
+        agent.run(args.mode)
 
 
 if __name__ == "__main__":
