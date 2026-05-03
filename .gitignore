@@ -32,5 +32,11 @@ Thumbs.db
 # Env
 .env
 
+# Logs
+logs/
+
 # Agents dir
 .agents/
+
+# Skills
+skills-lock.json
