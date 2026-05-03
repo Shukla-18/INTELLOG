@@ -70,3 +70,20 @@ class User(Base):
     hashed_password = Column(String(200), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class MonitoredVM(Base):
+    __tablename__ = "monitored_vms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vm_id = Column(String(100), unique=True, nullable=False, index=True)
+    vm_name = Column(String(100), nullable=False)
+    private_ip = Column(String(50))
+    status = Column(String(20), default="ACTIVE")
+    image = Column(String(200))
+    flavor = Column(String(200))
+    agent_status = Column(String(20), default="not_deployed")  # not_deployed / deploying / running / stopped
+    agent_pid = Column(Integer, nullable=True)
+    monitoring = Column(Boolean, default=False)
+    deployed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

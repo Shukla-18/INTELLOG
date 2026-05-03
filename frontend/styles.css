@@ -895,3 +895,193 @@ tr:hover td {
     margin-bottom: 12px;
     opacity: 0.3;
 }
+
+/* ============================================
+   CLOUD VM DISCOVERY
+   ============================================ */
+
+.cloud-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.cloud-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-cloud-scan, .btn-cloud-deploy {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+    border: none;
+}
+
+.btn-cloud-scan {
+    background: linear-gradient(135deg, rgba(0, 245, 212, 0.15), rgba(0, 187, 249, 0.15));
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+.btn-cloud-scan:hover {
+    background: linear-gradient(135deg, rgba(0, 245, 212, 0.25), rgba(0, 187, 249, 0.25));
+    box-shadow: 0 0 20px rgba(0, 245, 212, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-cloud-deploy {
+    background: linear-gradient(135deg, rgba(155, 93, 229, 0.15), rgba(241, 91, 181, 0.15));
+    border: 1px solid var(--accent-purple);
+    color: var(--accent-purple);
+}
+
+.btn-cloud-deploy:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(155, 93, 229, 0.25), rgba(241, 91, 181, 0.25));
+    box-shadow: 0 0 20px rgba(155, 93, 229, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-cloud-deploy:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* VM table checkbox */
+#cloud-vm-table th:first-child,
+#cloud-vm-table td:first-child {
+    width: 40px;
+    text-align: center;
+}
+
+#cloud-vm-table input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent-cyan);
+    cursor: pointer;
+}
+
+/* VM status badges */
+.vm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.vm-status.active {
+    background: rgba(46, 213, 115, 0.15);
+    color: var(--sev-low);
+    border: 1px solid rgba(46, 213, 115, 0.3);
+}
+
+.vm-status.stopped {
+    background: rgba(255, 71, 87, 0.15);
+    color: var(--sev-high);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.vm-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.vm-status.active .vm-status-dot { background: var(--sev-low); box-shadow: 0 0 6px var(--sev-low); }
+.vm-status.stopped .vm-status-dot { background: var(--sev-high); }
+
+/* Agent status */
+.agent-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.agent-badge.running {
+    background: rgba(0, 245, 212, 0.15);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(0, 245, 212, 0.3);
+}
+
+.agent-badge.not-deployed {
+    background: rgba(74, 85, 104, 0.2);
+    color: var(--text-muted);
+    border: 1px solid rgba(74, 85, 104, 0.3);
+}
+
+.agent-badge.deploying {
+    background: rgba(255, 165, 2, 0.15);
+    color: var(--sev-medium);
+    border: 1px solid rgba(255, 165, 2, 0.3);
+    animation: pulse-badge 1.5s infinite;
+}
+
+/* Monitored VMs grid */
+.monitored-vms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.monitored-vm-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.2s ease;
+}
+
+.monitored-vm-card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-2px);
+}
+
+.monitored-vm-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 245, 212, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-cyan);
+    flex-shrink: 0;
+}
+
+.monitored-vm-info h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.monitored-vm-info p {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scanning animation on cloud scan button */
+.btn-cloud-scan.scanning {
+    animation: scanning 1.5s ease-in-out infinite;
+    pointer-events: none;
+}
+

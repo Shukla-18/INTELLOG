@@ -535,8 +535,11 @@ function switchSection(section) {
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     document.getElementById(`section-${section}`).classList.add('active');
 
-    const titles = { overview: 'System Overview', metrics: 'System Metrics', network: 'Network Traffic', logs: 'System Logs', alerts: 'Security Alerts' };
+    const titles = { overview: 'System Overview', metrics: 'System Metrics', network: 'Network Traffic', logs: 'System Logs', alerts: 'Security Alerts', cloud: 'Cloud VM Discovery' };
     document.getElementById('section-title').textContent = titles[section] || 'Dashboard';
+
+    // Auto-load cloud status when switching to cloud tab
+    if (section === 'cloud') fetchCloudStatus();
 }
 
 // ==================== UTILS ====================
@@ -575,3 +578,161 @@ function toast(message, type = 'info') {
         setTimeout(() => el.remove(), 300);
     }, 4000);
 }
+
+// ==================== CLOUD VM DISCOVERY ====================
+
+let discoveredVMs = [];
+let selectedVMIds = new Set();
+
+async function scanCloudVMs() {
+    const btn = document.getElementById('cloud-scan-btn');
+    btn.classList.add('scanning');
+    btn.querySelector('span').textContent = 'Scanning...';
+    toast('Scanning cloud environment for VMs...', 'info');
+
+    try {
+        const res = await fetch(`${API_BASE}/cloud/vms`);
+        if (!res.ok) throw new Error('Scan failed');
+        discoveredVMs = await res.json();
+        renderCloudVMTable(discoveredVMs);
+        document.getElementById('cloud-total-vms').textContent = discoveredVMs.length;
+        toast(`Found ${discoveredVMs.length} VMs in cloud`, 'success');
+    } catch (err) {
+        toast('Cloud scan failed: ' + err.message, 'error');
+    } finally {
+        btn.classList.remove('scanning');
+        btn.querySelector('span').textContent = 'Scan Cloud';
+    }
+
+    fetchCloudStatus();
+}
+
+function renderCloudVMTable(vms) {
+    const tbody = document.getElementById('cloud-vm-tbody');
+    if (vms.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 40px;">No VMs found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = vms.map(vm => `
+        <tr>
+            <td><input type="checkbox" class="vm-checkbox" value="${vm.vm_id}"
+                data-ip="${vm.private_ip}" data-name="${vm.vm_name}"
+                ${vm.status === 'STOPPED' ? 'disabled' : ''}
+                onchange="updateVMSelection()"></td>
+            <td style="font-weight:600; color: var(--text-primary);">${escapeHtml(vm.vm_name)}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">${vm.private_ip}</td>
+            <td><span class="vm-status ${vm.status.toLowerCase()}"><span class="vm-status-dot"></span>${vm.status}</span></td>
+            <td style="font-size: 12px; color: var(--text-secondary);">${vm.image}</td>
+            <td style="font-size: 12px; color: var(--text-secondary);">${vm.flavor}</td>
+            <td><span class="agent-badge not-deployed">Not Deployed</span></td>
+        </tr>
+    `).join('');
+}
+
+function updateVMSelection() {
+    const checkboxes = document.querySelectorAll('.vm-checkbox:checked');
+    selectedVMIds = new Set([...checkboxes].map(cb => cb.value));
+    const deployBtn = document.getElementById('cloud-deploy-btn');
+    deployBtn.disabled = selectedVMIds.size === 0;
+    deployBtn.querySelector('span').textContent = selectedVMIds.size > 0
+        ? `Start Monitoring (${selectedVMIds.size})`
+        : 'Start Monitoring';
+}
+
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.vm-checkbox:not(:disabled)');
+    checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+    updateVMSelection();
+}
+
+async function deploySelectedVMs() {
+    if (selectedVMIds.size === 0) return;
+
+    const btn = document.getElementById('cloud-deploy-btn');
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Deploying...';
+
+    // Update UI: show deploying status
+    selectedVMIds.forEach(vmId => {
+        const checkbox = document.querySelector(`.vm-checkbox[value="${vmId}"]`);
+        if (checkbox) {
+            const row = checkbox.closest('tr');
+            const agentCell = row.querySelector('td:last-child');
+            agentCell.innerHTML = '<span class="agent-badge deploying">Deploying...</span>';
+        }
+    });
+
+    try {
+        const res = await fetch(`${API_BASE}/cloud/start-monitoring`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vm_ids: [...selectedVMIds] }),
+        });
+
+        if (!res.ok) throw new Error('Deployment failed');
+        const data = await res.json();
+
+        // Update UI: show running status
+        data.results.forEach(r => {
+            const checkbox = document.querySelector(`.vm-checkbox[value="${r.vm_id}"]`);
+            if (checkbox) {
+                const row = checkbox.closest('tr');
+                const agentCell = row.querySelector('td:last-child');
+                if (r.status === 'success') {
+                    agentCell.innerHTML = '<span class="agent-badge running">Running</span>';
+                } else {
+                    agentCell.innerHTML = '<span class="agent-badge not-deployed">Failed</span>';
+                }
+            }
+        });
+
+        toast(data.message, 'success');
+        fetchCloudStatus();
+    } catch (err) {
+        toast('Agent deployment failed: ' + err.message, 'error');
+    } finally {
+        btn.querySelector('span').textContent = 'Start Monitoring';
+        updateVMSelection();
+    }
+}
+
+async function fetchCloudStatus() {
+    try {
+        const res = await fetch(`${API_BASE}/cloud/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('cloud-monitored').textContent = data.active_monitoring;
+        document.getElementById('cloud-agents-running').textContent = data.agents_running;
+
+        // Fetch monitored VMs list
+        const mRes = await fetch(`${API_BASE}/cloud/monitored`);
+        if (mRes.ok) {
+            const monitored = await mRes.json();
+            renderMonitoredVMs(monitored);
+        }
+    } catch (err) {
+        console.error('Cloud status error:', err);
+    }
+}
+
+function renderMonitoredVMs(vms) {
+    const container = document.getElementById('monitored-vms-list');
+    if (vms.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">No VMs being monitored yet.</p>';
+        return;
+    }
+    container.innerHTML = vms.filter(v => v.monitoring).map(vm => `
+        <div class="monitored-vm-card">
+            <div class="monitored-vm-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </div>
+            <div class="monitored-vm-info">
+                <h4>${escapeHtml(vm.vm_name)}</h4>
+                <p>${vm.private_ip || 'N/A'} · <span class="agent-badge ${vm.agent_status === 'running' ? 'running' : 'not-deployed'}">${vm.agent_status}</span></p>
+            </div>
+        </div>
+    `).join('');
+}
+

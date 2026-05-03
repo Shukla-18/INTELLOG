@@ -6,6 +6,7 @@ from pathlib import Path
 
 from backend.database import init_db, SessionLocal
 from backend.routes import router
+from backend.cloud_routes import cloud_router
 from backend.auth import create_default_admin
 
 app = FastAPI(
@@ -25,8 +26,9 @@ app.add_middleware(
 
 # Include routes
 app.include_router(router, prefix="/api")
+app.include_router(cloud_router, prefix="/api")
 
-# Serve frontend static files
+# Serve frontend static files (MUST be after API routes)
 frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
