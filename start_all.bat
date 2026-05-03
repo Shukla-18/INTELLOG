@@ -1,7 +1,6 @@
 @echo off
 :: Intellog Full Startup Script
-:: Starts: Backend + Cloudflare Tunnel + Auto-Deploy Watcher
-:: Usage: start_all.bat
+:: Starts: Backend (auto-reload) + Cloudflare Tunnel + Auto-Deploy Watcher
 
 echo.
 echo ========================================
@@ -21,27 +20,27 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') 
 )
 timeout /t 2 /nobreak >nul
 
-:: Start Backend
-echo [1/3] Starting FastAPI backend on :8000...
-start /b cmd /c "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > logs\backend.log 2>&1"
+:: Start Backend with --reload (auto-restarts on file change)
+echo [1/3] Starting FastAPI backend on :8000 (auto-reload ON)...
+start /b cmd /c "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload > logs\backend.log 2>&1"
 timeout /t 3 /nobreak >nul
 curl -s http://localhost:8000/api/health >nul 2>&1
 if errorlevel 1 (
     echo      !! Backend failed to start. Check logs\backend.log
 ) else (
-    echo      OK - Backend running
+    echo      OK - Backend running (auto-reload ON)
 )
 
 :: Start Cloudflare Tunnel
 echo [2/3] Starting Cloudflare Tunnel (intellog.dev)...
 start /b cmd /c "cloudflared tunnel run intellog > logs\tunnel.log 2>&1"
 timeout /t 3 /nobreak >nul
-echo      OK - Tunnel starting (may take ~10s to connect)
+echo      OK - Tunnel starting
 
 :: Start Auto-Deploy Watcher
 echo [3/3] Starting Auto-Deploy Watcher...
 start /b cmd /c "python autodeploy.py > logs\autodeploy.log 2>&1"
-echo      OK - Watching GitHub for changes (60s interval)
+echo      OK - Watching GitHub for changes
 
 echo.
 echo ========================================
@@ -50,10 +49,8 @@ echo.
 echo   Dashboard: https://intellog.dev
 echo   Local:     http://localhost:8000
 echo.
-echo   Logs:
-echo     Backend:    logs\backend.log
-echo     Tunnel:     logs\tunnel.log
-echo     AutoDeploy: logs\autodeploy.log
+echo   Auto-reload: ON (edit files, backend restarts)
+echo   Auto-deploy: ON (push to GitHub, auto-pulls)
 echo.
 echo   Push code:  push.bat "message"
 echo   Stop all:   stop_all.bat
